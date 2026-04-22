@@ -1,0 +1,15 @@
+{
+  "name": "tms-split-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "python3 -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload --reload-dir backend",
+    "build": "node scripts/build.js",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "python3 -m py_compile backend/main.py",
+    "start": "node scripts/start.js",
+    "start:frontend": "npm --prefix frontend run start",
+    "start:backend": "python3 -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8001"
+  }
+}

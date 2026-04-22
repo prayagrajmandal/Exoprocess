@@ -1,0 +1,5 @@
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+new installation --> npm i / npm i --force
+
+run -> npm run dev

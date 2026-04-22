@@ -1,0 +1,365 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model audit_logs {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id String?        @db.Uuid
+  user_id         String?        @db.Uuid
+  action          String?        @db.VarChar
+  entity_type     String?        @db.VarChar
+  entity_id       String?        @db.Uuid
+  old_values      Json?
+  new_values      Json?
+  ip_address      String?        @db.VarChar
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model customers {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id String?        @db.Uuid
+  customer_code   String?        @db.VarChar
+  customer_name   String         @db.VarChar
+  contact_person  String?        @db.VarChar
+  email           String?        @db.VarChar
+  phone           String?        @db.VarChar
+  alternate_phone String?        @db.VarChar
+  gst_number      String?        @db.VarChar
+  pan_number      String?        @db.VarChar
+  address_line_1  String?
+  address_line_2  String?
+  city            String?        @db.VarChar
+  state           String?        @db.VarChar
+  country         String?        @db.VarChar
+  postal_code     String?        @db.VarChar
+  status          String?        @default("active") @db.VarChar
+  remarks         String?
+  created_by      String?        @db.Uuid
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamp(6)
+  users           users?         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  invoices        invoices[]
+  orders          orders[]
+}
+
+model departments {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id String?        @db.Uuid
+  name            String         @db.VarChar
+  code            String?        @db.VarChar
+  description     String?
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamp(6)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model drivers {
+  id                  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id     String?        @db.Uuid
+  driver_code         String?        @db.VarChar
+  driver_name         String         @db.VarChar
+  phone               String?        @db.VarChar
+  alternate_phone     String?        @db.VarChar
+  email               String?        @db.VarChar
+  license_number      String?        @db.VarChar
+  license_type        String?        @db.VarChar
+  license_expiry_date DateTime?      @db.Date
+  address             String?
+  city                String?        @db.VarChar
+  state               String?        @db.VarChar
+  country             String?        @db.VarChar
+  postal_code         String?        @db.VarChar
+  joining_date        DateTime?      @db.Date
+  status              String?        @default("active") @db.VarChar
+  photo_data          String?
+  remarks             String?
+  created_at          DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?      @default(now()) @db.Timestamp(6)
+  organizations       organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  gate_passes         gate_passes[]
+  trips               trips[]
+}
+
+model gate_passes {
+  id                   String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id      String?        @db.Uuid
+  gate_pass_number     String?        @unique @db.VarChar
+  order_id             String?        @db.Uuid
+  trip_id              String?        @db.Uuid
+  vehicle_id           String?        @db.Uuid
+  driver_id            String?        @db.Uuid
+  entry_type           String?        @db.VarChar
+  entry_time           DateTime?      @db.Timestamp(6)
+  exit_time            DateTime?      @db.Timestamp(6)
+  gate_status          String?        @default("pending") @db.VarChar
+  security_person_name String?        @db.VarChar
+  remarks              String?
+  challan_pdf_url      String?
+  created_at           DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?      @default(now()) @db.Timestamp(6)
+  drivers              drivers?       @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders               orders?        @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations        organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  trips                trips?         @relation(fields: [trip_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehicles             vehicles?      @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model invoices {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id String?        @db.Uuid
+  invoice_number  String?        @unique @db.VarChar
+  order_id        String?        @db.Uuid
+  customer_id     String?        @db.Uuid
+  invoice_date    DateTime?      @db.Date
+  due_date        DateTime?      @db.Date
+  subtotal        Decimal?       @db.Decimal
+  tax_amount      Decimal?       @db.Decimal
+  discount_amount Decimal?       @db.Decimal
+  total_amount    Decimal?       @db.Decimal
+  paid_amount     Decimal?       @db.Decimal
+  balance_amount  Decimal?       @db.Decimal
+  payment_status  String?        @default("unpaid") @db.VarChar
+  invoice_status  String?        @default("draft") @db.VarChar
+  remarks         String?
+  created_by      String?        @db.Uuid
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamp(6)
+  users           users?         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers       customers?     @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders          orders?        @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model order_items {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  order_id    String?   @db.Uuid
+  item_code   String?   @db.VarChar
+  item_name   String?   @db.VarChar
+  description String?
+  quantity    Decimal?  @db.Decimal
+  weight      Decimal?  @db.Decimal
+  unit        String?   @db.VarChar
+  rate        Decimal?  @db.Decimal
+  amount      Decimal?  @db.Decimal
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+  orders      orders?   @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model orders {
+  id                      String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id         String?        @db.Uuid
+  order_number            String?        @unique @db.VarChar
+  customer_id             String?        @db.Uuid
+  pickup_address          String?
+  pickup_city             String?        @db.VarChar
+  pickup_state            String?        @db.VarChar
+  pickup_country          String?        @db.VarChar
+  pickup_postal_code      String?        @db.VarChar
+  drop_address            String?
+  drop_city               String?        @db.VarChar
+  drop_state              String?        @db.VarChar
+  drop_country            String?        @db.VarChar
+  drop_postal_code        String?        @db.VarChar
+  order_date              DateTime?      @db.Date
+  scheduled_pickup_date   DateTime?      @db.Date
+  scheduled_delivery_date DateTime?      @db.Date
+  material_type           String?        @db.VarChar
+  total_quantity          Decimal?       @db.Decimal
+  total_weight            Decimal?       @db.Decimal
+  unit                    String?        @db.VarChar
+  freight_amount          Decimal?       @db.Decimal
+  tax_amount              Decimal?       @db.Decimal
+  total_amount            Decimal?       @db.Decimal
+  priority                String?        @db.VarChar
+  status                  String?        @default("pending") @db.VarChar
+  notes                   String?
+  created_by              String?        @db.Uuid
+  created_at              DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?      @default(now()) @db.Timestamp(6)
+  gate_passes             gate_passes[]
+  invoices                invoices[]
+  order_items             order_items[]
+  users                   users?         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customers               customers?     @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations           organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  trips                   trips[]
+}
+
+model organizations {
+  id             String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name           String        @unique @db.VarChar
+  code           String        @unique @db.VarChar
+  email          String?       @db.VarChar
+  phone          String?       @db.VarChar
+  country        String?       @db.VarChar
+  state          String?       @db.VarChar
+  city           String?       @db.VarChar
+  address_line_1 String?
+  address_line_2 String?
+  postal_code    String?       @db.VarChar
+  pan_number     String?       @db.VarChar
+  gst_number     String?       @db.VarChar
+  status         String?       @default("active") @db.VarChar
+  max_users      Int?
+  employee_bus_count Int?      @default(0)
+  employee_car_count Int?      @default(0)
+  officer_car_count  Int?      @default(0)
+  created_at     DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?     @default(now()) @db.Timestamp(6)
+  audit_logs     audit_logs[]
+  customers      customers[]
+  departments    departments[]
+  drivers        drivers[]
+  gate_passes    gate_passes[]
+  invoices       invoices[]
+  orders         orders[]
+  trips          trips[]
+  users          users[]
+  vehicles       vehicles[]
+}
+
+model permissions {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name             String             @db.VarChar
+  code             String             @unique @db.VarChar
+  module           String?            @db.VarChar
+  description      String?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  role_permissions role_permissions[]
+  user_permissions user_permissions[]
+}
+
+model role_permissions {
+  id            String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  role_id       String?      @db.Uuid
+  permission_id String?      @db.Uuid
+  created_at    DateTime?    @default(now()) @db.Timestamp(6)
+  permissions   permissions? @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles         roles?       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model roles {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name             String             @unique @db.VarChar
+  code             String             @unique @db.VarChar
+  description      String?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  role_permissions role_permissions[]
+  user_roles       user_roles[]
+}
+
+model sessions {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  token      String    @unique
+  ip_address String?   @db.VarChar
+  user_agent String?
+  expires_at DateTime? @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model trips {
+  id                 String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id    String?        @db.Uuid
+  trip_number        String?        @unique @db.VarChar
+  order_id           String?        @db.Uuid
+  vehicle_id         String?        @db.Uuid
+  driver_id          String?        @db.Uuid
+  start_location     String?
+  end_location       String?
+  planned_start_time DateTime?      @db.Timestamp(6)
+  planned_end_time   DateTime?      @db.Timestamp(6)
+  actual_start_time  DateTime?      @db.Timestamp(6)
+  actual_end_time    DateTime?      @db.Timestamp(6)
+  distance_km        Decimal?       @db.Decimal
+  trip_status        String?        @default("planned") @db.VarChar
+  tracking_status    String?        @db.VarChar
+  remarks            String?
+  created_by         String?        @db.Uuid
+  created_at         DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?      @default(now()) @db.Timestamp(6)
+  gate_passes        gate_passes[]
+  users              users?         @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  drivers            drivers?       @relation(fields: [driver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders             orders?        @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations      organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vehicles           vehicles?      @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_roles {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  role_id    String?   @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  roles      roles?    @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id              String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id String?        @db.Uuid
+  user_id         String?        @db.VarChar
+  name            String         @db.VarChar
+  email           String         @unique @db.VarChar
+  phone           String?        @db.VarChar
+  password_hash   String
+  department_id   String?        @db.Uuid
+  status          String?        @default("active") @db.VarChar
+  last_login_at   DateTime?      @db.Timestamp(6)
+  created_by      String?        @db.Uuid
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamp(6)
+  audit_logs      audit_logs[]
+  customers       customers[]
+  invoices        invoices[]
+  orders          orders[]
+  sessions        sessions[]
+  trips           trips[]
+  user_roles      user_roles[]
+  user_permissions user_permissions[]
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user_permissions {
+  id            String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id       String?      @db.Uuid
+  permission_id String?      @db.Uuid
+  created_at    DateTime?    @default(now()) @db.Timestamp(6)
+  permissions   permissions? @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users?       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model vehicles {
+  id                    String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organization_id       String?        @db.Uuid
+  vehicle_number        String?        @unique @db.VarChar
+  vehicle_type          String?        @db.VarChar
+  registration_number   String?        @db.VarChar
+  chassis_number        String?        @db.VarChar
+  engine_number         String?        @db.VarChar
+  capacity              Decimal?       @db.Decimal
+  capacity_unit         String?        @db.VarChar
+  fuel_type             String?        @db.VarChar
+  gps_device_no         String?        @db.VarChar
+  insurance_expiry_date DateTime?      @db.Date
+  permit_expiry_date    DateTime?      @db.Date
+  fitness_expiry_date   DateTime?      @db.Date
+  pollution_expiry_date DateTime?      @db.Date
+  status                String?        @default("available") @db.VarChar
+  remarks               String?
+  created_at            DateTime?      @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?      @default(now()) @db.Timestamp(6)
+  gate_passes           gate_passes[]
+  trips                 trips[]
+  organizations         organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
