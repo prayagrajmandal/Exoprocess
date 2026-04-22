@@ -1,4 +1,5 @@
 const { spawnSync } = require("node:child_process")
+const fs = require("node:fs")
 const path = require("node:path")
 
 const root = process.cwd()
@@ -30,6 +31,34 @@ function resolvePythonCommand() {
   return null
 }
 
+function ensureFrontendDependencies() {
+  const nextBinary = isWindows
+    ? path.join(root, "frontend", "node_modules", ".bin", "next.cmd")
+    : path.join(root, "frontend", "node_modules", ".bin", "next")
+
+  if (fs.existsSync(nextBinary)) {
+    return
+  }
+
+  const installResult = spawnSync(
+    npmCmd,
+    ["install", "--include=dev", "--no-fund", "--no-audit"],
+    {
+      cwd: path.join(root, "frontend"),
+      env: {
+        ...process.env,
+        PATH: [path.join(root, "scripts"), process.env.PATH].filter(Boolean).join(path.delimiter),
+      },
+      stdio: "inherit",
+      shell: false,
+    }
+  )
+
+  if (installResult.status !== 0) {
+    process.exit(installResult.status || 1)
+  }
+}
+
 const pythonCmd = resolvePythonCommand()
 
 if (pythonCmd) {
@@ -50,6 +79,8 @@ if (pythonCmd) {
 } else {
   console.warn("Skipping backend compile: Python is not available in this build environment.")
 }
+
+ensureFrontendDependencies()
 
 const frontendResult = spawnSync(npmCmd, ["run", "build"], {
   cwd: path.join(root, "frontend"),
