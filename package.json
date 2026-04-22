@@ -5,6 +5,7 @@
     "dev": "node scripts/dev.js",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "python3 -m uvicorn main:app --app-dir backend --host 0.0.0.0 --port 8001 --reload --reload-dir backend",
+    "prebuild": "npm --prefix frontend install --include=dev --no-fund --no-audit",
     "build": "node scripts/build.js",
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "python3 -m py_compile backend/main.py",
