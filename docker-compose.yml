@@ -1,0 +1,20 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    container_name: exoprocess_bd_conatiner
+    ports:
+      - "${BACKEND_PORT:-8036}:8036"
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    container_name: exoprocess_ft_conatiner
+    ports:
+      - "${FRONTEND_PORT:-8035}:8035"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    restart: unless-stopped
