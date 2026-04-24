@@ -3,7 +3,7 @@ name: Deploy To VPS
 on:
   push:
     branches:
-      - dev
+      - main
   workflow_dispatch:
     inputs:
       deploy_path:
