@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useMaintenance } from "@/hooks/use-maintenance"
 import { useFleet } from "@/hooks/use-fleet"
 import { canEditRoute, getRoleLabels } from "@/lib/auth"
-import { ClipboardList, IndianRupee, Plus, Wrench } from "lucide-react"
+import { ClipboardList, IndianRupee, Plus, Wrench, X } from "lucide-react"
 
 const maintenanceTypeOptions = [
   "Routine Service",
@@ -28,7 +28,7 @@ const emptyForm = {
   nextDueDate: "",
   serviceCost: "",
   workshopName: "",
-  spareParts: "",
+  spareParts: [""],
   notes: "",
 }
 
@@ -87,7 +87,7 @@ export default function MaintenancePage() {
       nextDueDate: form.nextDueDate,
       serviceCost: Number(form.serviceCost || 0),
       workshop: form.workshopName,
-      spareParts: form.spareParts,
+      spareParts: form.spareParts.filter((p) => p.trim() !== "").join("\n"),
       notes: form.notes || "Recorded by maintenance team",
     })
 
@@ -100,11 +100,6 @@ export default function MaintenancePage() {
       <PageHeader
         title="Maintenance"
         description="Record and track vehicle maintenance history"
-        actions={
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setActiveTab("add")} disabled={!canEditMaintenance}>
-            <Plus className="mr-2 h-4 w-4" /> Add Entry
-          </Button>
-        }
       />
 
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -234,15 +229,49 @@ export default function MaintenancePage() {
               </div>
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-card-foreground">Spare Parts</label>
-              <textarea
-                value={form.spareParts}
-                onChange={(e) => setForm({ ...form, spareParts: e.target.value })}
-                rows={4}
-                placeholder={"Example: Oil filter\nBrake pads\nAir filter"}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
-              />
+            <div className="rounded-lg border border-border p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <label className="text-sm font-medium text-card-foreground">Spare Parts</label>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-sm hover:from-blue-600 hover:to-indigo-700 border-0"
+                  onClick={() => setForm({ ...form, spareParts: [...form.spareParts, ""] })}
+                >
+                  Add new spare parts
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {form.spareParts.map((part, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={part}
+                      onChange={(e) => {
+                        const newParts = [...form.spareParts]
+                        newParts[index] = e.target.value
+                        setForm({ ...form, spareParts: newParts })
+                      }}
+                      placeholder={`Example: ${index === 0 ? "Oil filter" : index === 1 ? "Brake pads" : "Air filter"}`}
+                      className="flex-1 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground"
+                    />
+                    {form.spareParts.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          const newParts = form.spareParts.filter((_, i) => i !== index)
+                          setForm({ ...form, spareParts: newParts })
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div>

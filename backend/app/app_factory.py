@@ -10,6 +10,7 @@ from psycopg import connect
 
 from app.config import DATABASE_CONNECT_TIMEOUT, DATABASE_URL
 from app.routers.api import router as api_router
+from app.routers.clogo import router as clogo_router
 from app.services.tms import ensure_bootstrap_data, ensure_custom_tables
 
 logger = logging.getLogger(__name__)
@@ -88,4 +89,5 @@ def create_app() -> FastAPI:
         }
 
     app.include_router(api_router)
+    app.include_router(clogo_router)
     return app

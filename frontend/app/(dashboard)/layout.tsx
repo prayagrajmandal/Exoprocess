@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Button } from "@/components/ui/button"
+import { TmsBrandLogo } from "@/components/tms-brand-logo"
 import { useAuth } from "@/hooks/use-auth"
+import { useOrganizations } from "@/hooks/use-organizations"
 import { UiLanguageProvider, useUiLanguage, type LanguageCode } from "@/lib/ui-language"
 import { canAccessRoute, getDefaultRouteForSession } from "@/lib/auth"
 import { cn } from "@/lib/utils"
@@ -22,6 +24,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { session, isLoading, logout } = useAuth()
+  const { organizations } = useOrganizations()
   const { language, setLanguage, t } = useUiLanguage()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [darkMode, setDarkMode] = useState(false)
@@ -99,6 +102,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const smokeTertiary = darkMode ? "rgba(203,213,225,0.56)" : "rgba(15,23,42,0.42)"
   const headlightFill = darkMode ? "#fef3c7" : "#f8fafc"
   const headlightGlow = darkMode ? "rgba(250,204,21,0.4)" : "rgba(255,255,255,0)"
+  const organization = organizations.find((item) => item.name.toLowerCase() === session.organization.toLowerCase())
+  const organizationLogoUrl = organization?.logoUrl?.trim()
 
   return (
     <div
@@ -120,12 +125,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-[280px]"}`}>
         <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col p-4 pt-16 lg:px-8 lg:pb-8 lg:pt-6">
           <div className="mb-4">
-            <div className="hidden lg:block">
-              <p className="bg-[linear-gradient(90deg,#0f172a_0%,#1d4ed8_52%,#0f172a_100%)] bg-clip-text text-xl font-extrabold uppercase tracking-[0.24em] text-transparent dark:bg-[linear-gradient(90deg,#e2e8f0_0%,#7dd3fc_52%,#e2e8f0_100%)]">
-                Transport Management System
-              </p>
-              <div className="relative mt-2 h-10 w-64 overflow-visible">
-                <div className="absolute bottom-0 left-0 h-[4px] w-56 rounded-full bg-[linear-gradient(90deg,rgba(14,165,233,0.24),rgba(37,99,235,0.85),rgba(249,115,22,0.45))] dark:bg-[linear-gradient(90deg,rgba(125,211,252,0.18),rgba(56,189,248,0.85),rgba(251,146,60,0.4))]" />
+            <div className="hidden lg:flex lg:items-start lg:justify-between">
+              <div>
+                <p className="bg-[linear-gradient(90deg,#0f172a_0%,#1d4ed8_52%,#0f172a_100%)] bg-clip-text text-xl font-extrabold uppercase tracking-[0.24em] text-transparent dark:bg-[linear-gradient(90deg,#e2e8f0_0%,#7dd3fc_52%,#e2e8f0_100%)]">
+                  Transport Management System
+                </p>
+                <div className="relative mt-2 h-10 w-64 overflow-visible">
+                  <div className="absolute bottom-0 left-0 h-[4px] w-56 rounded-full bg-[linear-gradient(90deg,rgba(14,165,233,0.24),rgba(37,99,235,0.85),rgba(249,115,22,0.45))] dark:bg-[linear-gradient(90deg,rgba(125,211,252,0.18),rgba(56,189,248,0.85),rgba(251,146,60,0.4))]" />
                 <div
                   className="absolute bottom-[4px] left-0 will-change-transform"
                   style={{
@@ -213,6 +219,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   </svg>
                 </div>
               </div>
+              </div>
+              <div className="flex h-16 w-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-transparent">
+                {organizationLogoUrl && (
+                  <img
+                    src={organizationLogoUrl}
+                    alt={`${session.organization} logo`}
+                    className="h-full w-full object-contain"
+                  />
+                )}
+              </div>
             </div>
           </div>
           <div
@@ -229,7 +245,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
             <div className="text-center lg:self-end">
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Organization</p>
-              <p className="mt-1 text-2xl font-bold tracking-[0.04em] text-card-foreground">{session.organization}</p>
+              <div className="mt-1 flex items-center justify-center gap-3">
+                <p className="text-2xl font-bold tracking-[0.04em] text-card-foreground">{session.organization}</p>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <label className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground shadow-sm">

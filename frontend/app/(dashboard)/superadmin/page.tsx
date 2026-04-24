@@ -1,17 +1,59 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { PageHeader } from "@/components/tms-ui"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Switch } from "@/components/ui/switch"
+import { apiUrl } from "@/lib/api"
 import { useOrganizations } from "@/hooks/use-organizations"
 import { usePermissionOptions } from "@/hooks/use-permission-options"
 import { useUserDirectory } from "@/hooks/use-user-directory"
 import { countUsersForOrganization, type AccessRoute, type OrganizationConfig } from "@/lib/auth"
 import { Lock, LockOpen, Plus, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
+
+async function uploadOrganizationLogo(organizationName: string, file: File) {
+  const formData = new FormData()
+  formData.append("organizationName", organizationName)
+  formData.append("file", file)
+
+  const response = await fetch(apiUrl("/api/clogo/upload"), {
+    method: "POST",
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload organization logo (${response.status})`)
+  }
+
+  return (await response.json()) as { organizationName?: string; logoData?: string; filename?: string }
+}
+
+async function fetchOrganizationLogo(organizationName: string) {
+  const response = await fetch(apiUrl(`/api/clogo/${encodeURIComponent(organizationName)}`))
+  if (response.status === 404) {
+    return ""
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to load organization logo (${response.status})`)
+  }
+
+  const data = (await response.json()) as { logoData?: string }
+  return data.logoData ?? ""
+}
+
+async function deleteOrganizationLogo(organizationName: string) {
+  const response = await fetch(apiUrl(`/api/clogo/${encodeURIComponent(organizationName)}`), {
+    method: "DELETE",
+  })
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete organization logo (${response.status})`)
+  }
+}
 
 export default function SuperAdminPage() {
   const { organizations, isLoading, error: organizationError, isUsingFallbackData: isUsingFallbackOrganizations, saveOrganizations, saveOrganization: saveOrganizationRecord, resetOrganizations, deleteOrganization } = useOrganizations()
@@ -24,6 +66,7 @@ export default function SuperAdminPage() {
   const [isSavingOrganizationAccess, setIsSavingOrganizationAccess] = useState(false)
   const [amountCalculationMode, setAmountCalculationMode] = useState<"total" | "id-base" | "truck-base">("total")
   const [amountForm, setAmountForm] = useState("")
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null)
   const [form, setForm] = useState({
     maxUsers: "",
     address: "",
@@ -33,6 +76,7 @@ export default function SuperAdminPage() {
     pan: "",
     amount: "",
     currency: "",
+    logoUrl: "",
     employeeBusCount: "",
     employeeCarCount: "",
     officerCarCount: "",
@@ -49,6 +93,7 @@ export default function SuperAdminPage() {
     pan: "",
     amount: "",
     currency: "",
+    logoUrl: "",
     employeeBusCount: "",
     employeeCarCount: "",
     officerCarCount: "",
@@ -113,6 +158,7 @@ export default function SuperAdminPage() {
         pan: "",
         amount: "",
         currency: "",
+        logoUrl: "",
         employeeBusCount: "",
         employeeCarCount: "",
         officerCarCount: "",
@@ -132,6 +178,7 @@ export default function SuperAdminPage() {
         pan: "",
         amount: "",
         currency: "",
+        logoUrl: "",
         employeeBusCount: "",
         employeeCarCount: "",
         officerCarCount: "",
@@ -148,6 +195,7 @@ export default function SuperAdminPage() {
       pan: currentOrganization.pan,
       amount: String(currentOrganization.amount ?? 0),
       currency: currentOrganization.currency ?? "",
+      logoUrl: currentOrganization.logoUrl ?? "",
       employeeBusCount: String(currentOrganization.employeeBusCount),
       employeeCarCount: String(currentOrganization.employeeCarCount),
       officerCarCount: String(currentOrganization.officerCarCount),
@@ -175,6 +223,7 @@ export default function SuperAdminPage() {
         pan: form.pan.trim(),
         amount: Math.max(0, Number(form.amount) || 0),
         currency: form.currency.trim(),
+        logoUrl: form.logoUrl.trim(),
         employeeBusCount: Math.max(0, Number(form.employeeBusCount) || 0),
         employeeCarCount: Math.max(0, Number(form.employeeCarCount) || 0),
         officerCarCount: Math.max(0, Number(form.officerCarCount) || 0),
@@ -199,6 +248,7 @@ export default function SuperAdminPage() {
         pan: "",
         amount: "",
         currency: "",
+        logoUrl: "",
         employeeBusCount: "",
         employeeCarCount: "",
         officerCarCount: "",
@@ -222,6 +272,7 @@ export default function SuperAdminPage() {
       pan: organization.pan,
       amount: String(organization.amount ?? 0),
       currency: organization.currency ?? "",
+      logoUrl: organization.logoUrl ?? "",
       employeeBusCount: String(organization.employeeBusCount),
       employeeCarCount: String(organization.employeeCarCount),
       officerCarCount: String(organization.officerCarCount),
@@ -287,6 +338,7 @@ export default function SuperAdminPage() {
       pan: newOrganization.pan.trim(),
       amount: Math.max(0, Number(newOrganization.amount) || 0),
       currency: newOrganization.currency.trim(),
+      logoUrl: newOrganization.logoUrl.trim(),
       employeeBusCount: Math.max(0, Number(newOrganization.employeeBusCount) || 0),
       employeeCarCount: Math.max(0, Number(newOrganization.employeeCarCount) || 0),
       officerCarCount: Math.max(0, Number(newOrganization.officerCarCount) || 0),
@@ -305,6 +357,7 @@ export default function SuperAdminPage() {
         pan: createdOrganization.pan,
         amount: String(createdOrganization.amount),
         currency: createdOrganization.currency,
+        logoUrl: createdOrganization.logoUrl ?? "",
         employeeBusCount: String(createdOrganization.employeeBusCount),
         employeeCarCount: String(createdOrganization.employeeCarCount),
         officerCarCount: String(createdOrganization.officerCarCount),
@@ -319,6 +372,7 @@ export default function SuperAdminPage() {
         pan: "",
         amount: "",
         currency: "",
+        logoUrl: "",
         employeeBusCount: "",
         employeeCarCount: "",
         officerCarCount: "",
@@ -498,6 +552,15 @@ export default function SuperAdminPage() {
                       className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-card-foreground">Company Logo URL</label>
+                    <input
+                      value={newOrganization.logoUrl}
+                      onChange={(e) => setNewOrganization({ ...newOrganization, logoUrl: e.target.value })}
+                      placeholder="Paste organization logo URL"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-card-foreground">Employee Buses</label>
@@ -557,6 +620,7 @@ export default function SuperAdminPage() {
                         pan: "",
                         amount: "",
                         currency: "",
+                        logoUrl: "",
                         employeeBusCount: "",
                         employeeCarCount: "",
                         officerCarCount: "",
@@ -661,7 +725,7 @@ export default function SuperAdminPage() {
                   <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => handleOrganizationSelect(organization.name)}
+                      onClick={() => void handleOrganizationSelect(organization.name)}
                     >
                       View
                     </Button>
@@ -877,6 +941,93 @@ export default function SuperAdminPage() {
                       onChange={(e) => setForm({ ...form, pan: e.target.value })}
                       className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-card-foreground">Company Logo URL</label>
+                    <input
+                      value={form.logoUrl}
+                      onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-3">
+                      <input
+                        ref={logoFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (event) => {
+                          const file = event.target.files?.[0]
+                          if (!file) {
+                            return
+                          }
+
+                          const previousLogoUrl = form.logoUrl
+                          const previewUrl = URL.createObjectURL(file)
+                          setForm((current) => ({
+                            ...current,
+                            logoUrl: previewUrl,
+                          }))
+
+                          try {
+                            const result = await uploadOrganizationLogo(selectedOrganization.trim(), file)
+                            setForm((current) => ({
+                              ...current,
+                              logoUrl: result.logoData ?? previewUrl,
+                            }))
+                          } catch {
+                            setForm((current) => ({
+                              ...current,
+                              logoUrl: previousLogoUrl,
+                            }))
+                            toast.error("The logo could not be uploaded. Please choose another image.")
+                          } finally {
+                            URL.revokeObjectURL(previewUrl)
+                            event.target.value = ""
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => logoFileInputRef.current?.click()}
+                      >
+                        Search Path
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          const previousLogoUrl = form.logoUrl
+                          setForm({ ...form, logoUrl: "" })
+                          try {
+                            if (selectedOrganization.trim()) {
+                              await deleteOrganizationLogo(selectedOrganization.trim())
+                            }
+                          } catch {
+                            setForm({ ...form, logoUrl: previousLogoUrl })
+                            toast.error("The logo could not be removed.")
+                          }
+                        }}
+                        disabled={!form.logoUrl.trim()}
+                      >
+                        Clear
+                      </Button>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-background">
+                          {form.logoUrl.trim() ? (
+                            <img src={form.logoUrl.trim()} alt={`${selectedOrganization} logo preview`} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">No Logo</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-card-foreground">Logo Preview</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {form.logoUrl.trim() ? "Logo selected" : "Choose an image to preview it here"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-card-foreground">Address</label>

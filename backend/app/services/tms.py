@@ -346,6 +346,7 @@ def to_organization_config(row: dict[str, Any]) -> dict[str, Any]:
         "amount": float(row.get("amount") or 0),
         "currency": row.get("currency") or "",
         "truckCount": int(row.get("truck_count") or 0),
+        "logoUrl": row.get("logo_data") or row.get("logo_url") or "",
         "isBlocked": (row.get("status") or "active").lower() == "blocked",
         "appPermissions": list(dict.fromkeys(row.get("app_permissions") or [item["route"] for item in ACCESS_OPTIONS])),
     }
@@ -719,6 +720,12 @@ def ensure_organization_transport_columns() -> None:
         ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT ''
         """
     )
+    execute(
+        """
+        ALTER TABLE organizations
+        ADD COLUMN IF NOT EXISTS logo_url TEXT NOT NULL DEFAULT ''
+        """
+    )
 
 
 def ensure_organization_permissions_table() -> None:
@@ -731,6 +738,63 @@ def ensure_organization_permissions_table() -> None:
         )
         """
     )
+
+
+def ensure_clogo_table() -> None:
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS clogo (
+          organization_id UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+          logo_data TEXT NOT NULL DEFAULT '',
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """
+    )
+
+
+def upsert_organization_logo(organization_id: str, logo_data: str) -> None:
+    ensure_clogo_table()
+    execute(
+        """
+        INSERT INTO clogo (organization_id, logo_data, updated_at)
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (organization_id)
+        DO UPDATE SET logo_data = EXCLUDED.logo_data, updated_at = NOW()
+        """,
+        (organization_id, logo_data),
+    )
+
+
+def get_organization_logo_data(organization_name: str) -> dict[str, Any] | None:
+    ensure_clogo_table()
+    organization = fetch_one(
+        "SELECT id, name FROM organizations WHERE LOWER(name) = LOWER(%s) LIMIT 1",
+        (organization_name.strip(),),
+    )
+    if not organization:
+        return None
+
+    logo_row = fetch_one("SELECT logo_data FROM clogo WHERE organization_id = %s LIMIT 1", (organization["id"],))
+    return {
+        "organizationName": organization["name"],
+        "logoData": (logo_row or {}).get("logo_data") or "",
+    }
+
+
+def save_organization_logo_data(organization_name: str, logo_data: str) -> dict[str, Any] | None:
+    ensure_clogo_table()
+    organization = fetch_one(
+        "SELECT id, name FROM organizations WHERE LOWER(name) = LOWER(%s) LIMIT 1",
+        (organization_name.strip(),),
+    )
+    if not organization:
+        return None
+
+    upsert_organization_logo(organization["id"], logo_data)
+    return {
+        "organizationName": organization["name"],
+        "logoData": logo_data,
+    }
 
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -1210,18 +1274,20 @@ def ensure_role_permissions(role_record: dict[str, Any], permission_records: lis
 def ensure_organization(organization: dict[str, Any]) -> dict[str, Any]:
     ensure_organization_transport_columns()
     ensure_organization_permissions_table()
+    ensure_clogo_table()
     code = (make_slug(organization["name"]) or organization["name"]).upper()
     status = "blocked" if organization.get("isBlocked") else "active"
-    existing = fetch_one("SELECT id, code FROM organizations WHERE LOWER(name) = LOWER(%s) LIMIT 1", (organization["name"],))
+    existing = fetch_one("SELECT id, code, logo_url FROM organizations WHERE LOWER(name) = LOWER(%s) LIMIT 1", (organization["name"],))
+    logo_data = (organization.get("logoUrl") or "").strip()
     if existing:
         updated = fetch_one(
             """
             UPDATE organizations
             SET code = %s, email = %s, phone = %s, country = %s, address_line_1 = %s, pan_number = %s, max_users = %s,
-                employee_bus_count = %s, employee_car_count = %s, officer_car_count = %s, amount = %s, currency = %s, status = %s
+                employee_bus_count = %s, employee_car_count = %s, officer_car_count = %s, amount = %s, currency = %s, logo_url = %s, status = %s
             WHERE id = %s
             RETURNING id, name, max_users, address_line_1, address_line_2, phone, country, email, pan_number,
-                      employee_bus_count, employee_car_count, officer_car_count, amount, currency, status
+                      employee_bus_count, employee_car_count, officer_car_count, amount, currency, logo_url, status
             """,
             (
                 existing["code"] or code,
@@ -1236,10 +1302,12 @@ def ensure_organization(organization: dict[str, Any]) -> dict[str, Any]:
                 max(0, int(organization.get("officerCarCount", 0) or 0)),
                 max(0.0, float(organization.get("amount", 0) or 0)),
                 (organization.get("currency") or "").strip(),
+                logo_data,
                 status,
                 existing["id"],
             ),
         )
+        upsert_organization_logo(existing["id"], logo_data)
         next_app_permissions = organization.get("appPermissions")
         if next_app_permissions is None:
             next_app_permissions = get_organization_app_permissions(existing["id"])
@@ -1250,11 +1318,11 @@ def ensure_organization(organization: dict[str, Any]) -> dict[str, Any]:
         """
         INSERT INTO organizations (
             name, code, email, phone, country, address_line_1, pan_number, max_users,
-            employee_bus_count, employee_car_count, officer_car_count, amount, currency, status
+            employee_bus_count, employee_car_count, officer_car_count, amount, currency, logo_url, status
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id, name, max_users, address_line_1, address_line_2, phone, country, email, pan_number,
-                  employee_bus_count, employee_car_count, officer_car_count, amount, currency, status
+                  employee_bus_count, employee_car_count, officer_car_count, amount, currency, logo_url, status
         """,
         (
             organization["name"],
@@ -1270,10 +1338,12 @@ def ensure_organization(organization: dict[str, Any]) -> dict[str, Any]:
             max(0, int(organization.get("officerCarCount", 0) or 0)),
             max(0.0, float(organization.get("amount", 0) or 0)),
             (organization.get("currency") or "").strip(),
+            logo_data,
             status,
         ),
     )
     if created:
+        upsert_organization_logo(created["id"], logo_data)
         sync_organization_permissions(
             created["id"],
             organization.get("appPermissions") or [item["route"] for item in ACCESS_OPTIONS],
@@ -1523,13 +1593,15 @@ def get_organizations_from_db() -> list[dict[str, Any]]:
     ensure_bootstrap_data()
     ensure_organization_transport_columns()
     ensure_organization_permissions_table()
+    ensure_clogo_table()
     rows = fetch_all(
         """
-        SELECT name, max_users, address_line_1, address_line_2, phone, country, email, pan_number,
-               amount, currency,
-               employee_bus_count, employee_car_count, officer_car_count, status, id
-        FROM organizations
-        ORDER BY name ASC
+        SELECT o.name, o.max_users, o.address_line_1, o.address_line_2, o.phone, o.country, o.email, o.pan_number,
+               o.amount, o.currency, c.logo_data,
+               o.employee_bus_count, o.employee_car_count, o.officer_car_count, o.status, o.id, o.logo_url
+        FROM organizations o
+        LEFT JOIN clogo c ON c.organization_id = o.id
+        ORDER BY o.name ASC
         """
     )
     permissions_by_org = get_organization_app_permissions_map([row.get("id") for row in rows if row.get("id")])

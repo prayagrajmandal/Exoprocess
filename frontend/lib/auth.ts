@@ -41,6 +41,7 @@ export interface OrganizationConfig {
   officerCarCount: number
   amount: number
   currency: string
+  logoUrl?: string
   truckCount?: number
   isBlocked: boolean
   appPermissions: AccessRoute[]
@@ -163,6 +164,7 @@ export const defaultOrganizations: OrganizationConfig[] = [
     officerCarCount: 0,
     amount: 0,
     currency: "",
+    logoUrl: "",
     truckCount: 0,
     isBlocked: false,
     appPermissions: accessOptions.map((item) => item.route),
@@ -180,6 +182,7 @@ export const defaultOrganizations: OrganizationConfig[] = [
     officerCarCount: 0,
     amount: 0,
     currency: "",
+    logoUrl: "",
     isBlocked: false,
     appPermissions: accessOptions.map((item) => item.route),
   },
@@ -199,6 +202,7 @@ function normalizeOrganization(organization: Partial<OrganizationConfig> & Pick<
     officerCarCount: Math.max(0, Number(organization.officerCarCount ?? 0)),
     amount: Math.max(0, Number(organization.amount ?? 0)),
     currency: organization.currency ?? "",
+    logoUrl: organization.logoUrl ?? "",
     truckCount: Math.max(0, Number(organization.truckCount ?? 0)),
     isBlocked: organization.isBlocked ?? false,
     appPermissions: Array.from(new Set((organization.appPermissions ?? accessOptions.map((item) => item.route)).filter(Boolean))),
