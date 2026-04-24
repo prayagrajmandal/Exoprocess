@@ -11,10 +11,11 @@ ENV NODE_ENV=production
 ENV PORT=8035
 ENV HOSTNAME=0.0.0.0
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/package*.json ./
+RUN npm install --omit=dev
 
 EXPOSE 8035
 
-CMD ["node", "server.js"]
+CMD ["node_modules/.bin/next", "start", "--port", "8035"]

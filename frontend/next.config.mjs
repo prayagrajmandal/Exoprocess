@@ -7,7 +7,6 @@ const __dirname = path.dirname(__filename)
 const workspaceRoot = path.resolve(__dirname, "..")
 
 const nextConfig = {
-  output: 'standalone',
   turbopack: {
     root: workspaceRoot,
   },
