@@ -1,4 +1,4 @@
-# TMS Split Structure
+# TMS Split Flow Structure 
 
 This project is now separated into two apps:
 
